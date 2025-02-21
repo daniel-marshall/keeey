@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { KeeeyPipelineStack } from '../lib/keeey-stack';
+import { KeeeyPipelineStack } from '../lib/keeey-pipeline';
 
 const app = new cdk.App();
 new KeeeyPipelineStack(app, 'KeeeyPipelineStack', {
