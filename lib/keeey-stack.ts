@@ -10,11 +10,12 @@ export interface Props extends cdk.StackProps {
 export class KeeeyStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
+    const ecrDigest = new cdk.CfnParameter(this, 'propertyfrombuild').valueAsString;
     const repo = Repository.fromRepositoryName(this, 'ImageSource', props.ecrRepoName);
     new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.FROM_IMAGE,
       handler: lambda.Handler.FROM_IMAGE,
-      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: process.env.ECR_DIGEST }),
+      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: ecrDigest }),
     });
   }
 }
