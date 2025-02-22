@@ -27,7 +27,8 @@ export class KeeeyPipelineStack extends cdk.Stack {
       selfMutation: false
     });
 
-    const buildRepo = new Repository(pipeline, `${id}BuildArtifacts`);
+    const buildRepo = new Repository(this, `${id}BuildArtifacts`);
+    const ecrExport = new cdk.CfnOutput(this, `${id}BuildArtifactsExport`, { exportName: 'EcrRepoName', value: buildRepo.repositoryName });
 
     const lambdaBuild = new pipelines.CodeBuildStep('Build', {
       commands: [ `./gradlew docker-publish -Paccount_id=${this.account} -Pregion=${this.region} -Prepo_name=${buildRepo.repositoryName}` ],
@@ -50,20 +51,21 @@ export class KeeeyPipelineStack extends cdk.Stack {
       post: [ lambdaBuild ],
     });
 
-    lambdaBuild.consumedStackOutputs
-
-    pipeline.addWave('KeeeyAlpha', {
-      post: [new pipelines.ShellStep('Deploy', {
-        input: synthStep.primaryOutput,
-        additionalInputs: {
-          "lambda_sorce_build": lambdaBuild.primaryOutput!
-        },
-        installCommands: ['npm install --global aws-cdk'],
-        commands: ['cdk deploy KeeeyAlpha --parameters lambda-image-digest=$(cat lambda_sorce_build/digest)'],
-      })]
-    })
-
-    new KeeeyStack(scope, 'KeeeyAlpha', { ...props, buildRepo });
+    const alpha = pipeline.addWave('KeeeyAlpha')
+    alpha.addPre(
+      new pipelines.ShellStep('Deploy', {
+        input: lambdaBuild.primaryOutput,
+        commands: ['export ECR_DIGEST=$(cat digest)'],
+      })
+    )
+    alpha.addStage(
+      new class extends cdk.Stage {
+        constructor() {
+          super(scope, 'Alpha', props);
+          new KeeeyStack(this, 'KeeeyAlpha', { ...props, ecrRepoName: ecrExport.importValue });
+        }
+      }()
+    );
 
     pipeline.buildPipeline();
     buildRepo.grantPullPush(lambdaBuild);
