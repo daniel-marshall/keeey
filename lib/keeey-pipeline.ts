@@ -33,7 +33,7 @@ export class KeeeyPipelineStack extends cdk.Stack {
       commands: [
         `./gradlew docker-publish -Paccount_id=${this.account} -Pregion=${this.region} -Prepo_name=${buildRepo.repositoryName}`,
         'ls -la',
-        'export BUILT_ECR_IMAGE=$(cat ./digest)'
+        'export BUILT_ECR_IMAGE_DIGEST=$(cat ./digest)'
       ],
       buildEnvironment: {
         buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2023_5,
@@ -59,7 +59,7 @@ export class KeeeyPipelineStack extends cdk.Stack {
       new class extends cdk.Stage {
         constructor() {
           super(scope, 'Alpha', props);
-          new KeeeyStack(this, 'KeeeyAlpha', { ...props, ecrRepo: new cdk.CfnOutput(buildRepo, `${id}BuildRepository`, { exportName: 'EcrRepoName', value: buildRepo.repositoryName }), ecrRepoEnvVarName: "BUILT_ECR_IMAGE" });
+          new KeeeyStack(this, 'KeeeyAlpha', { ...props, ecrRepo: new cdk.CfnOutput(buildRepo, `${id}BuildRepository`, { exportName: 'EcrRepoName', value: buildRepo.repositoryName }), ecrDigest: new cdk.CfnOutput(buildRepo, `${id}BuildDigest`, { exportName: 'EcrDigest', value: lambdaBuild.exportedVariable("BUILT_ECR_IMAGE_DIGEST") }) });
         }
       }()
     );

@@ -5,18 +5,17 @@ import { Repository } from 'aws-cdk-lib/aws-ecr';
 
 export interface Props extends cdk.StackProps {
   ecrRepo: cdk.CfnOutput,
-  ecrRepoEnvVarName: string
+  ecrDigest: cdk.CfnOutput,
 }
 
 export class KeeeyStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
-    const ecrDigest = process.env[props.ecrRepoEnvVarName];
     const repo = Repository.fromRepositoryName(this, 'ImageSource', props.ecrRepo.importValue);
     new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.FROM_IMAGE,
       handler: lambda.Handler.FROM_IMAGE,
-      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: ecrDigest }),
+      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: props.ecrDigest.importValue }),
     });
   }
 }
