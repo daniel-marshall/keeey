@@ -5,7 +5,7 @@ import { Repository } from 'aws-cdk-lib/aws-ecr';
 
 export interface Props extends cdk.StackProps {
   ecrRepo: cdk.CfnOutput,
-  ecrDigest: cdk.CfnOutput,
+  ecrRepoEnvVarName: string,
 }
 
 export class KeeeyStack extends cdk.Stack {
@@ -15,7 +15,7 @@ export class KeeeyStack extends cdk.Stack {
     new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.FROM_IMAGE,
       handler: lambda.Handler.FROM_IMAGE,
-      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: props.ecrDigest.importValue }),
+      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: props.ecrRepoEnvVarName }),
     });
   }
 }
