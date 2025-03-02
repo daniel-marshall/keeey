@@ -14,8 +14,8 @@ export class KeeeyStack extends cdk.Stack {
       type: 'String',
     });
     ecrPointer.overrideLogicalId(props.ecrImagePointerParameterId);
-    const ecrRepo = ecrPointer.valueAsString.split('@')[0];
-    const ecrDigest = ecrPointer.valueAsString.split('@')[1];
+    const ecrRepo = ecrPointer.valueAsString.split('@')[0]!;
+    const ecrDigest = ecrPointer.valueAsString.split('@')[1]!;
     const repo = Repository.fromRepositoryName(this, 'ImageSource', ecrRepo);
     new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.FROM_IMAGE,

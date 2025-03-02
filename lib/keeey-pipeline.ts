@@ -58,7 +58,7 @@ export class KeeeyPipelineStack extends cdk.Stack {
                 },
               },
               artifacts: {
-                'base-directory': 'cdk.out'
+                files: 'cdk.out/**/*'
               },
             }),
           }),
@@ -141,7 +141,7 @@ export class KeeeyPipelineStack extends cdk.Stack {
           stackName: props.stack.stackName,
           changeSetName: 'PipelineChange',
           adminPermissions: true,
-          templatePath: props.cdkSynth.atPath(props.stack.node.path),
+          templatePath: props.cdkSynth.atPath(props.stack.artifactId),
           parameterOverrides: props.stack.parameters,
           runOrder: 1,
           extraInputs: [ props.cdkSynth ],
