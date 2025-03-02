@@ -4,18 +4,23 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 
 export interface Props extends cdk.StackProps {
-  ecrRepo: cdk.CfnOutput,
-  ecrRepoEnvVarName: string,
+  ecrImagePointerParameterId: string,
 }
 
 export class KeeeyStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: Props) {
     super(scope, id, props);
-    const repo = Repository.fromRepositoryName(this, 'ImageSource', props.ecrRepo.importValue);
+    const ecrPointer = new cdk.CfnParameter(this, 'EcrPointer', {
+      type: 'String',
+    });
+    ecrPointer.overrideLogicalId(props.ecrImagePointerParameterId);
+    const ecrRepo = ecrPointer.valueAsString.split('@')[0];
+    const ecrDigest = ecrPointer.valueAsString.split('@')[1];
+    const repo = Repository.fromRepositoryName(this, 'ImageSource', ecrRepo);
     new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.FROM_IMAGE,
       handler: lambda.Handler.FROM_IMAGE,
-      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: props.ecrRepoEnvVarName }),
+      code: lambda.Code.fromEcrImage(repo, { tagOrDigest: ecrDigest }),
     });
   }
 }

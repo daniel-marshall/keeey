@@ -57,10 +57,12 @@ export class KeeeyPipelineStack extends cdk.Stack {
                   ],
                 },
               },
+              artifacts: {
+                'base-directory': 'cdk.out'
+              },
             }),
           }),
           input: cdkLibSource,
-          outputs: [ cdkSynthResult ]
         }),
       ]
     });
@@ -110,18 +112,26 @@ export class KeeeyPipelineStack extends cdk.Stack {
     });
 
     const keeey = new class extends cdk.Stack {
+      parameters = {
+        EcrImagePointer: lambdaBuild.variable("BUILT_ECR_IMAGE_DIGEST")
+      }
       constructor() {
         super(scope, 'Alpha', props);
-        new KeeeyStack(this, 'KeeeyAlpha', { ...props, ecrRepo: new cdk.CfnOutput(buildRepo, `${id}BuildRepository`, { exportName: 'EcrRepoName', value: buildRepo.repositoryName }), ecrRepoEnvVarName: lambdaBuild.variable("BUILT_ECR_IMAGE_DIGEST") });
+        new KeeeyStack(this, 'Keeey', { ...props, ecrImagePointerParameterId: 'EcrImagePointer' });
       }
     }();
 
-    this.appendStackToPipeline({pipeline: pipeline2, stageName: 'Alpha', stack: keeey, cdkSynth: cdkSynthResult})
+    this.appendStackToPipeline({
+      pipeline: pipeline2,
+      stageName: 'Alpha',
+      stack: keeey,
+      cdkSynth: cdkSynthResult
+    })
 
     buildRepo.grantPullPush(lambdaBuild2);
   }
 
-  private appendStackToPipeline(props: {pipeline: codepipeline.Pipeline, stageName: string, stack: cdk.Stack, cdkSynth: codepipeline.Artifact}) {
+  private appendStackToPipeline(props: { pipeline: codepipeline.Pipeline, stageName: string, stack: cdk.Stack & { parameters?: { [name: string]: any }  }, cdkSynth: codepipeline.Artifact }) {
     props.pipeline.addStage({
       stageName: props.stageName,
       actions: [
@@ -131,6 +141,7 @@ export class KeeeyPipelineStack extends cdk.Stack {
           changeSetName: 'PipelineChange',
           adminPermissions: true,
           templatePath: props.cdkSynth.atPath(props.stack.node.path),
+          parameterOverrides: props.stack.parameters,
           runOrder: 1,
           extraInputs: [ props.cdkSynth ],
         }),
