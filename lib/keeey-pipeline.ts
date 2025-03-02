@@ -3,7 +3,6 @@ import { Construct } from 'constructs';
 import * as pipelines from 'aws-cdk-lib/pipelines';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
-import { Role } from 'aws-cdk-lib/aws-iam';
 import { KeeeyStack } from './keeey-stack';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
@@ -12,37 +11,42 @@ export class KeeeyPipelineStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const cdkLibSource = new codepipeline.Artifact();
-    const cdkLambdaSource = new codepipeline.Artifact();
-
-    const pipeline2 = new codepipeline.Pipeline(this, 'Pipeline', {
-      
+    const cdkSynthResult = new codepipeline.Artifact();
+    const pipelineActual = new codepipeline.Pipeline(this, 'Pipeline', {})
+    const pipeline = new pipelines.CodePipeline(this, 'PipelineWrapper', {
+      codePipeline: pipelineActual,
+      synth: pipelines.CodePipelineFileSet.fromArtifact(cdkSynthResult),
+      selfMutation: false
     });
 
-    pipeline2.addStage({
+    const githubActionParams = {
+      branch: 'main',
+      connectionArn: 'arn:aws:codeconnections:us-east-1:794038246157:connection/ea3d36ad-20ec-4d43-8a71-6507352dcda8', // Created using the AWS console
+    }
+
+    const cdkLibSource = new codepipeline.Artifact();
+    const cdkLambdaSource = new codepipeline.Artifact();
+    pipelineActual.addStage({
       stageName: 'Source',
       actions: [
         new codepipeline_actions.CodeStarConnectionsSourceAction({
+          ...githubActionParams,
           actionName: 'CDK_Source',
           owner: 'daniel-marshall',
           repo: 'keeey',
           output: cdkLibSource,
-          branch: 'main',
-          connectionArn: 'arn:aws:codeconnections:us-east-1:794038246157:connection/ea3d36ad-20ec-4d43-8a71-6507352dcda8', // Created using the AWS console
         }),
         new codepipeline_actions.CodeStarConnectionsSourceAction({
+          ...githubActionParams,
           actionName: 'Lambda_Source',
           owner: 'daniel-marshall',
           repo: 'keeey-lambda',
           output: cdkLambdaSource,
-          branch: 'main',
-          connectionArn: 'arn:aws:codeconnections:us-east-1:794038246157:connection/ea3d36ad-20ec-4d43-8a71-6507352dcda8', // Created using the AWS console
         }),
       ],
     });
 
-    const cdkSynthResult = new codepipeline.Artifact();
-    pipeline2.addStage({
+    pipelineActual.addStage({
       stageName: 'CdkSynthesise',
       actions: [
         new codepipeline_actions.CodeBuildAction({
@@ -68,17 +72,11 @@ export class KeeeyPipelineStack extends cdk.Stack {
       ]
     });
 
-    const pipeline = new pipelines.CodePipeline(this, 'PipelineWrapper', {
-      codePipeline: pipeline2,
-      synth: pipelines.CodePipelineFileSet.fromArtifact(cdkSynthResult),
-      selfMutation: false
-    });
-
     pipeline.buildPipeline();
 
     const buildRepo = new Repository(this, `${id}BuildArtifacts`);
 
-    const lambdaBuild2 = new codebuild.PipelineProject(this, `LambdaBuild`, {
+    const lambdaBuildProject = new codebuild.PipelineProject(this, `LambdaBuild`, {
       environment: {
         buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2023_5,
       },
@@ -100,14 +98,15 @@ export class KeeeyPipelineStack extends cdk.Stack {
         },
       }),
     });
+    buildRepo.grantPullPush(lambdaBuildProject);
 
     const lambdaBuild = new codepipeline_actions.CodeBuildAction({
       actionName: 'LambdaBuild',
-      project: lambdaBuild2,
+      project: lambdaBuildProject,
       input: cdkLambdaSource
     });
 
-    pipeline2.addStage({
+    pipelineActual.addStage({
       stageName: 'LambdaBuild',
       actions: [ lambdaBuild ]
     });
@@ -122,13 +121,11 @@ export class KeeeyPipelineStack extends cdk.Stack {
     }();
 
     this.appendStackToPipeline({
-      pipeline: pipeline2,
+      pipeline: pipelineActual,
       stageName: 'Alpha',
       stack: keeey,
       cdkSynth: cdkSynthResult
     })
-
-    buildRepo.grantPullPush(lambdaBuild2);
   }
 
   private appendStackToPipeline(props: { pipeline: codepipeline.Pipeline, stageName: string, stack: cdk.Stack & { parameters?: { [name: string]: any }  }, cdkSynth: codepipeline.Artifact }) {
