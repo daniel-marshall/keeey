@@ -63,6 +63,7 @@ export class KeeeyPipelineStack extends cdk.Stack {
             }),
           }),
           input: cdkLibSource,
+          outputs: [ cdkSynthResult ],
         }),
       ]
     });
