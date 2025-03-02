@@ -112,13 +112,12 @@ export class KeeeyPipelineStack extends cdk.Stack {
       actions: [ lambdaBuild ]
     });
 
-    const keeey = new class extends cdk.Stack {
+    const keeey = new class extends KeeeyStack {
       parameters = {
-        EcrImagePointer: lambdaBuild.variable("BUILT_ECR_IMAGE_DIGEST")
+        EcrImageDigest: lambdaBuild.variable("BUILT_ECR_IMAGE_DIGEST")
       }
       constructor() {
-        super(scope, 'Alpha', props);
-        new KeeeyStack(this, 'Keeey', { ...props, ecrImagePointerParameterId: 'EcrImagePointer' });
+        super(scope, 'Alpha/Keeey', { ...props, ecrRepo: buildRepo, ecrImageDigestParameterId: 'EcrImageDigest' });
       }
     }();
 
