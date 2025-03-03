@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
@@ -33,5 +34,9 @@ export class KeeeyStack extends cdk.Stack {
         origin: origins.FunctionUrlOrigin.withOriginAccessControl(url)
       }
     });
+
+    const user = new iam.User(this, 'FunctionInvokeUser');
+
+    url.grantInvokeUrl(user);
   }
 }
