@@ -19,9 +19,6 @@ export class KeeeyStack extends cdk.Stack {
     const table = new dynamo.TableV2(this, 'GlobalTable', {
       partitionKey: { name: 'key', type: dynamo.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      replicas: [
-        { region: 'us-east-1' },
-      ],
     });
 
     const ecrDigest = new cdk.CfnParameter(this, props.ecrImageDigestParameterId, {
